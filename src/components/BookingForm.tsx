@@ -116,7 +116,7 @@ const BookingForm = ({ prestationId, employeId, debut, date, onBooked }: Booking
       )}
 
       <Button type="submit" size="lg" className="w-full" disabled={reserver.isPending}>
-        {reserver.isPending ? "Réservation en cours…" : "Réserver"}
+        {reserver.isPending ? "Réservation en cours…" : "Je réserve"}
       </Button>
     </form>
   );
