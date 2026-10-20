@@ -1,0 +1,1 @@
+-- Demo data for RésaPro (loaded by supabase db push --include-seed)

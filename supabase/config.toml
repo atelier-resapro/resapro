@@ -1,0 +1,28 @@
+project_id = "yprcrgkgekrplfegpwkk"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+
+[db]
+port = 54322
+major_version = 17
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[auth]
+enabled = true
+# Public sign-ups are disabled: the only account is the manager's,
+# created by hand in the Supabase dashboard.
+enable_signup = false
+
+[auth.email]
+enable_signup = false
+enable_confirmations = false
+
+[functions.envoyer-sms]
+# The function checks the caller itself (see index.ts).
+verify_jwt = false
