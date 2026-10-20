@@ -49,9 +49,9 @@ const GerantPlanning = () => {
   const parJour = useMemo(() => {
     const groupes = new Map<string, NonNullable<typeof rendezVous>>();
     for (const rdv of rendezVous ?? []) {
-      const liste = groupes.get(rdv.creneaux.date) ?? [];
+      const liste = groupes.get(rdv.date) ?? [];
       liste.push(rdv);
-      groupes.set(rdv.creneaux.date, liste);
+      groupes.set(rdv.date, liste);
     }
     return [...groupes.entries()];
   }, [rendezVous]);
@@ -106,10 +106,13 @@ const GerantPlanning = () => {
                   <Card>
                     <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-2 p-4 sm:p-4">
                       <p className="w-16 shrink-0 text-lg font-semibold text-primary">
-                        {formatHeure(rdv.creneaux.heure_debut)}
+                        {formatHeure(rdv.heure)}
                       </p>
                       <div className="min-w-0 flex-1 basis-40">
-                        <p className="font-medium">{rdv.prestations?.nom}</p>
+                        <p className="font-medium">
+                          {rdv.prestations?.nom}
+                          {rdv.employes && <span className="font-normal text-muted-foreground"> · avec {rdv.employes.nom}</span>}
+                        </p>
                         <p className="truncate text-sm text-muted-foreground">
                           {rdv.clients?.nom} ·{" "}
                           <a href={`tel:${rdv.clients?.telephone}`} className="underline underline-offset-2">
