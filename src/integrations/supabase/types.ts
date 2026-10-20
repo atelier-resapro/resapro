@@ -304,6 +304,14 @@ export type Database = {
           jour: string;
           heure: string;
           prix: number;
+          coiffeur: string;
+        }[];
+      };
+      employes_prestation: {
+        Args: { p_prestation_id: string };
+        Returns: {
+          employe_id: string;
+          employe_nom: string;
         }[];
       };
       creneaux_libres_employes: {
@@ -319,7 +327,8 @@ export type Database = {
           p_nom: string;
           p_telephone: string;
           p_prestation_id: string;
-          p_employe_id: string;
+          /** null = "Indifférent": the server picks the employee. */
+          p_employe_id: string | null;
           p_debut: string;
         };
         Returns: string;
