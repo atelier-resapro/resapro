@@ -49,6 +49,10 @@ const Confirmation = () => {
                 <dd className="font-medium">{formatHeure(recap.heure)}</dd>
               </div>
               <div className="flex justify-between gap-4 py-3">
+                <dt className="text-muted-foreground">Coiffeur</dt>
+                <dd className="font-medium">{recap.coiffeur}</dd>
+              </div>
+              <div className="flex justify-between gap-4 py-3">
                 <dt className="text-muted-foreground">Prix</dt>
                 <dd className="font-medium">{formatPrix(recap.prix)}</dd>
               </div>

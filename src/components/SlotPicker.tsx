@@ -1,15 +1,19 @@
 import { useCreneauxLibres } from "@/hooks/useCreneauxLibres";
-import { formatHeure } from "@/lib/dates";
+import { formatHeure, toHeure } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 interface SlotPickerProps {
   date: string;
+  prestationId: string;
+  /** null = "Indifférent": the free starts of all the employees. */
+  employeId: string | null;
+  /** Selected start, as returned by the server (timestamptz). */
   value: string | null;
-  onChange: (creneauId: string, heure: string) => void;
+  onChange: (debut: string) => void;
 }
 
-const SlotPicker = ({ date, value, onChange }: SlotPickerProps) => {
-  const { data: creneaux, isLoading, error } = useCreneauxLibres(date);
+const SlotPicker = ({ date, prestationId, employeId, value, onChange }: SlotPickerProps) => {
+  const { data: debuts, isLoading, error } = useCreneauxLibres(date, prestationId, employeId);
 
   if (isLoading) return <p className="text-muted-foreground">Chargement des créneaux…</p>;
   if (error)
@@ -18,25 +22,29 @@ const SlotPicker = ({ date, value, onChange }: SlotPickerProps) => {
         Impossible de charger les créneaux. Réessayez dans un instant.
       </p>
     );
-  if (!creneaux || creneaux.length === 0)
-    return <p className="text-muted-foreground">Aucun créneau libre ce jour-là. Essayez un autre jour.</p>;
+  if (!debuts || debuts.length === 0)
+    return (
+      <p className="text-muted-foreground">
+        Aucun horaire libre ce jour-là. Essayez un autre jour{employeId ? " ou un autre coiffeur" : ""}.
+      </p>
+    );
 
   return (
-    <ul aria-label="Créneaux libres" className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-      {creneaux.map((c) => {
-        const selected = c.creneau_id === value;
+    <ul aria-label="Horaires libres" className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      {debuts.map((debut) => {
+        const selected = debut === value;
         return (
-          <li key={c.creneau_id}>
+          <li key={debut}>
             <button
               type="button"
               aria-pressed={selected}
-              onClick={() => onChange(c.creneau_id, c.heure_debut)}
+              onClick={() => onChange(debut)}
               className={cn(
                 "h-11 w-full rounded-md border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 selected ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-accent",
               )}
             >
-              {formatHeure(c.heure_debut)}
+              {formatHeure(toHeure(new Date(debut)))}
             </button>
           </li>
         );

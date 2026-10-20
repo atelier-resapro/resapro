@@ -10,13 +10,16 @@ import { envoyerSms } from "@/lib/sms";
 
 interface BookingFormProps {
   prestationId: string;
-  creneauId: string;
+  /** null = "Indifférent": the server picks the employee. */
+  employeId: string | null;
+  /** Start chosen in the list of free starts (timestamptz from the server). */
+  debut: string;
   date: string;
   /** Called after the booking succeeded, with the new appointment id. */
   onBooked: (rendezVousId: string) => void;
 }
 
-const BookingForm = ({ prestationId, creneauId, date, onBooked }: BookingFormProps) => {
+const BookingForm = ({ prestationId, employeId, debut, date, onBooked }: BookingFormProps) => {
   const queryClient = useQueryClient();
   const [nom, setNom] = useState("");
   const [telephone, setTelephone] = useState("");
@@ -26,11 +29,12 @@ const BookingForm = ({ prestationId, creneauId, date, onBooked }: BookingFormPro
 
   const reserver = useMutation({
     mutationFn: async (values: { nom: string; telephone: string }) => {
-      const { data, error } = await supabase.rpc("reserver", {
+      const { data, error } = await supabase.rpc("reserver_employe", {
         p_nom: values.nom,
         p_telephone: values.telephone,
         p_prestation_id: prestationId,
-        p_creneau_id: creneauId,
+        p_employe_id: employeId,
+        p_debut: debut,
       });
       if (error) throw error;
       return data;

@@ -36,11 +36,13 @@ React + TypeScript + Vite. Supabase (PostgreSQL, Auth, Edge Functions).
   - `reserver(...)` → the only way to create an appointment. Validates name and French phone, normalises the phone to `0612345678`, upserts the client by phone, inserts the appointment.
   - `recapitulatif(p_rendez_vous_id)` → service/day/time/price for the confirmation page, never client data.
   - `creneaux_libres_employes(p_date, p_prestation_id, p_employe_id?)` → free start times (every 15 min) per employee, from `horaires`, `fermetures` and appointments.
-  - `reserver_employe(...)` → booking with an employee and a start; the start must be returned by `creneaux_libres_employes`.
+  - `reserver_employe(...)` → booking with an employee and a start; the start must be returned by `creneaux_libres_employes`. With `p_employe_id` null ("Indifférent"), it picks the free employee with the fewest confirmed appointments that day (then by name), and tries the next one if that one was just taken.
+  - `employes_prestation(p_prestation_id)` → active employees who do an active service (id + name only), for the hairdresser choice.
+  - `recapitulatif` also returns the hairdresser's name (`coiffeur`).
 - New public features must follow the same pattern (a narrow `security definer` function with `revoke all ... from public` + `grant execute ... to anon, authenticated`), not a new `anon` RLS policy that exposes rows.
 - Double booking is prevented by the exclusion constraint `rendez_vous_sans_chevauchement` (no two `confirme` appointments overlapping for the same employee, `btree_gist`); the old partial unique index `rendez_vous_un_confirme_par_creneau` is still there for the slot system. The booking functions turn violations into a friendly message.
 - `normaliser_telephone(text)` is an internal helper (no grant) used by both booking functions.
-- Transition: the old slot system (`creneaux`, `creneau_id`, `creneaux_libres`, `reserver`) still works, on the manager's agenda (`employes.est_gerant`), until the pages use the new functions. Closing a day through `creneaux.ouvert` does not create a `fermetures` row.
+- Transition: the old slot system (`creneaux`, `creneau_id`, `creneaux_libres`, `reserver`) still works, on the manager's agenda (`employes.est_gerant`), until the pages use the new functions. The public booking page already uses the new ones; the manager pages do not yet. Closing a day through `creneaux.ouvert` does not create a `fermetures` row.
 - "Now" in SQL is salon time: `now() at time zone 'Europe/Paris'`.
 
 ### Data model

@@ -49,6 +49,30 @@ export function toHeure(d: Date): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+/** "2026-10-21", 2 -> "2026-10-23" */
+export function ajouterJours(iso: string, jours: number): string {
+  const d = fromISODate(iso);
+  d.setDate(d.getDate() + jours);
+  return toISODate(d);
+}
+
+const formatSalon = new Intl.DateTimeFormat("fr-FR", {
+  timeZone: "Europe/Paris",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+/** Timestamptz from the database -> salon day and time (Europe/Paris), whatever the browser's time zone. */
+export function jourEtHeureSalon(instant: string): { date: string; heure: string } {
+  const parts = formatSalon.formatToParts(new Date(instant));
+  const p = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? "";
+  return { date: `${p("year")}-${p("month")}-${p("day")}`, heure: `${p("hour")}:${p("minute")}` };
+}
+
 /** 1 (Monday, like isodow) -> "lundi" */
 export function nomJourSemaine(jour: number): string {
   return ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"][jour - 1] ?? "";

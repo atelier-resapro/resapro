@@ -35,19 +35,26 @@ function versInternational(telephone: string): string {
   return "33" + telephone.replace(/^0/, "");
 }
 
-/** "2026-10-21" -> "mercredi 21 octobre" */
-function formatJour(date: string): string {
+/** Start of the appointment -> "mercredi 21 octobre" (salon time) */
+function formatJour(debut: Date): string {
   return new Intl.DateTimeFormat("fr-FR", {
     weekday: "long",
     day: "numeric",
     month: "long",
-    timeZone: "UTC",
-  }).format(new Date(`${date}T12:00:00Z`));
+    timeZone: "Europe/Paris",
+  }).format(debut);
 }
 
-/** "10:00:00" -> "10 h 00" */
-function formatHeure(heure: string): string {
-  const [h, m] = heure.split(":");
+/** Start of the appointment -> "10 h 00" (salon time) */
+function formatHeure(debut: Date): string {
+  const parts = new Intl.DateTimeFormat("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "Europe/Paris",
+  }).formatToParts(debut);
+  const h = parts.find((p) => p.type === "hour")?.value ?? "0";
+  const m = parts.find((p) => p.type === "minute")?.value ?? "00";
   return `${Number(h)} h ${m}`;
 }
 
@@ -92,7 +99,7 @@ Deno.serve(async (req) => {
   // The appointment and the phone number are read here, on the server.
   const { data: rdv, error: lectureError } = await admin
     .from("rendez_vous")
-    .select("id, statut, cree_le, clients(nom, telephone), prestations(nom), creneaux(date, heure_debut)")
+    .select("id, statut, cree_le, debut, clients(nom, telephone), prestations(nom)")
     .eq("id", rendez_vous_id)
     .maybeSingle();
   if (lectureError) {
@@ -102,7 +109,7 @@ Deno.serve(async (req) => {
   if (!rdv) return json({ error: "Rendez-vous introuvable" }, 404);
 
   // deno-lint-ignore no-explicit-any
-  const { clients, prestations, creneaux } = rdv as any;
+  const { clients, prestations } = rdv as any;
 
   if (type === "confirmation") {
     const age = Date.now() - new Date(rdv.cree_le).getTime();
@@ -113,8 +120,9 @@ Deno.serve(async (req) => {
     return json({ error: "Ce rendez-vous n'est pas annulé" }, 409);
   }
 
-  const jour = formatJour(creneaux.date);
-  const heure = formatHeure(creneaux.heure_debut);
+  // The start works for both systems (old slots and employees).
+  const jour = formatJour(new Date(rdv.debut));
+  const heure = formatHeure(new Date(rdv.debut));
   const siteUrl = Deno.env.get("SITE_URL");
 
   const contenu =
