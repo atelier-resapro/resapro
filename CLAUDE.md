@@ -30,13 +30,22 @@ React + TypeScript + Vite. Supabase (PostgreSQL, Auth, Edge Functions).
   - `creneaux_libres(p_date)` → free, open, future slots (id + time only).
   - `reserver(...)` → the only way to create an appointment. Validates name and French phone, normalises the phone to `0612345678`, upserts the client by phone, inserts the appointment.
   - `recapitulatif(p_rendez_vous_id)` → service/day/time/price for the confirmation page, never client data.
+  - `creneaux_libres_employes(p_date, p_prestation_id, p_employe_id?)` → free start times (every 15 min) per employee, from `horaires`, `fermetures` and appointments.
+  - `reserver_employe(...)` → booking with an employee and a start; the start must be returned by `creneaux_libres_employes`.
 - New public features must follow the same pattern (a narrow `security definer` function with `revoke all ... from public` + `grant execute ... to anon, authenticated`), not a new `anon` RLS policy that exposes rows.
-- Double booking is prevented by the partial unique index `rendez_vous_un_confirme_par_creneau` (one `confirme` per slot); `reserver` turns the violation into a friendly message.
+- Double booking is prevented by the exclusion constraint `rendez_vous_sans_chevauchement` (no two `confirme` appointments overlapping for the same employee, `btree_gist`); the old partial unique index `rendez_vous_un_confirme_par_creneau` is still there for the slot system. The booking functions turn violations into a friendly message.
+- `normaliser_telephone(text)` is an internal helper (no grant) used by both booking functions.
+- Transition: the old slot system (`creneaux`, `creneau_id`, `creneaux_libres`, `reserver`) still works, on the manager's agenda (`employes.est_gerant`), until the pages use the new functions. Closing a day through `creneaux.ouvert` does not create a `fermetures` row.
 - "Now" in SQL is salon time: `now() at time zone 'Europe/Paris'`.
 
 ### Data model
 
-`clients` (unique `telephone`), `prestations` (`active` soft-delete flag), `creneaux` (one row per `date` + `heure_debut`, `ouvert` flag; closing a day = setting `ouvert = false` on all its slots), `rendez_vous` (`statut` is `'confirme'` or `'annule'`; cancelling is an update, not a delete).
+`clients` (unique `telephone`), `prestations` (`active` soft-delete flag), `creneaux` (one row per `date` + `heure_debut`, `ouvert` flag; closing a day = setting `ouvert = false` on all its slots), `rendez_vous` (`statut` is `'confirme'` or `'annule'`; cancelling is an update, not a delete; `employe_id`, `debut`, `fin` timestamptz; `creneau_id` only for the old system).
+`employes` (`actif`, `user_id` → `auth.users`, one `est_gerant`), `horaires` (`jour_semaine` 1 = Monday like `isodow`, several ranges per day allowed), `employe_prestations`, `fermetures` (`employe_id` null = whole salon).
+
+### Tests
+
+Database tests are pgTAP files in `supabase/tests`, run with `supabase test db` (local database).
 
 ### Duplicated rules (keep in sync)
 
