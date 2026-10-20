@@ -13,6 +13,10 @@ const GerantConnexion = lazy(() => import("./pages/GerantConnexion"));
 const GerantPlanning = lazy(() => import("./pages/GerantPlanning"));
 const GerantPrestations = lazy(() => import("./pages/GerantPrestations"));
 const GerantJournees = lazy(() => import("./pages/GerantJournees"));
+const GerantEmployes = lazy(() => import("./pages/GerantEmployes"));
+const EmployeLayout = lazy(() => import("./components/EmployeLayout"));
+const EmployeAgenda = lazy(() => import("./pages/EmployeAgenda"));
+const DefinirMotDePasse = lazy(() => import("./pages/DefinirMotDePasse"));
 
 const queryClient = new QueryClient();
 
@@ -30,7 +34,12 @@ const App = () => (
             <Route index element={<GerantPlanning />} />
             <Route path="prestations" element={<GerantPrestations />} />
             <Route path="journees" element={<GerantJournees />} />
+            <Route path="employes" element={<GerantEmployes />} />
           </Route>
+          <Route path="/employe" element={<EmployeLayout />}>
+            <Route index element={<EmployeAgenda />} />
+          </Route>
+          <Route path="/mot-de-passe" element={<DefinirMotDePasse />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

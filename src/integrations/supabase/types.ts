@@ -45,6 +45,145 @@ export type Database = {
         };
         Relationships: [];
       };
+      employe_prestations: {
+        Row: {
+          employe_id: string;
+          prestation_id: string;
+        };
+        Insert: {
+          employe_id: string;
+          prestation_id: string;
+        };
+        Update: {
+          employe_id?: string;
+          prestation_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "employe_prestations_employe_id_fkey";
+            columns: ["employe_id"];
+            isOneToOne: false;
+            referencedRelation: "employes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "employe_prestations_prestation_id_fkey";
+            columns: ["prestation_id"];
+            isOneToOne: false;
+            referencedRelation: "prestations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      employes: {
+        Row: {
+          actif: boolean;
+          cree_le: string | null;
+          est_gerant: boolean;
+          id: string;
+          nom: string;
+          telephone: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          actif?: boolean;
+          cree_le?: string | null;
+          est_gerant?: boolean;
+          id?: string;
+          nom: string;
+          telephone?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          actif?: boolean;
+          cree_le?: string | null;
+          est_gerant?: boolean;
+          id?: string;
+          nom?: string;
+          telephone?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
+      fermetures: {
+        Row: {
+          date: string;
+          employe_id: string | null;
+          id: string;
+          motif: string | null;
+        };
+        Insert: {
+          date: string;
+          employe_id?: string | null;
+          id?: string;
+          motif?: string | null;
+        };
+        Update: {
+          date?: string;
+          employe_id?: string | null;
+          id?: string;
+          motif?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "fermetures_employe_id_fkey";
+            columns: ["employe_id"];
+            isOneToOne: false;
+            referencedRelation: "employes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      horaires: {
+        Row: {
+          employe_id: string;
+          heure_debut: string;
+          heure_fin: string;
+          id: string;
+          jour_semaine: number;
+        };
+        Insert: {
+          employe_id: string;
+          heure_debut: string;
+          heure_fin: string;
+          id?: string;
+          jour_semaine: number;
+        };
+        Update: {
+          employe_id?: string;
+          heure_debut?: string;
+          heure_fin?: string;
+          id?: string;
+          jour_semaine?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "horaires_employe_id_fkey";
+            columns: ["employe_id"];
+            isOneToOne: false;
+            referencedRelation: "employes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      profils: {
+        Row: {
+          cree_le: string | null;
+          role: string;
+          user_id: string;
+        };
+        Insert: {
+          cree_le?: string | null;
+          role: string;
+          user_id: string;
+        };
+        Update: {
+          cree_le?: string | null;
+          role?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       prestations: {
         Row: {
           active: boolean;
@@ -76,7 +215,10 @@ export type Database = {
         Row: {
           client_id: string;
           cree_le: string | null;
-          creneau_id: string;
+          creneau_id: string | null;
+          debut: string;
+          employe_id: string;
+          fin: string;
           id: string;
           prestation_id: string;
           statut: string;
@@ -84,7 +226,10 @@ export type Database = {
         Insert: {
           client_id: string;
           cree_le?: string | null;
-          creneau_id: string;
+          creneau_id?: string | null;
+          debut: string;
+          employe_id: string;
+          fin: string;
           id?: string;
           prestation_id: string;
           statut?: string;
@@ -92,7 +237,10 @@ export type Database = {
         Update: {
           client_id?: string;
           cree_le?: string | null;
-          creneau_id?: string;
+          creneau_id?: string | null;
+          debut?: string;
+          employe_id?: string;
+          fin?: string;
           id?: string;
           prestation_id?: string;
           statut?: string;
@@ -110,6 +258,13 @@ export type Database = {
             columns: ["creneau_id"];
             isOneToOne: false;
             referencedRelation: "creneaux";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "rendez_vous_employe_id_fkey";
+            columns: ["employe_id"];
+            isOneToOne: false;
+            referencedRelation: "employes";
             referencedColumns: ["id"];
           },
           {
@@ -149,6 +304,42 @@ export type Database = {
           jour: string;
           heure: string;
           prix: number;
+        }[];
+      };
+      creneaux_libres_employes: {
+        Args: { p_date: string; p_prestation_id: string; p_employe_id?: string };
+        Returns: {
+          employe_id: string;
+          employe_nom: string;
+          debut: string;
+        }[];
+      };
+      reserver_employe: {
+        Args: {
+          p_nom: string;
+          p_telephone: string;
+          p_prestation_id: string;
+          p_employe_id: string;
+          p_debut: string;
+        };
+        Returns: string;
+      };
+      est_gerant_connecte: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      mon_employe_id: {
+        Args: Record<PropertyKey, never>;
+        Returns: string;
+      };
+      mon_agenda: {
+        Args: { p_debut: string; p_fin: string };
+        Returns: {
+          rendez_vous_id: string;
+          debut: string;
+          fin: string;
+          prestation: string;
+          client_nom: string;
         }[];
       };
     };

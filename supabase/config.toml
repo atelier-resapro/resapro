@@ -15,8 +15,11 @@ sql_paths = ["./seed.sql"]
 
 [auth]
 enabled = true
-# Public sign-ups are disabled: the only account is the manager's,
-# created by hand in the Supabase dashboard.
+site_url = "http://localhost:8080"
+# The invitation link of an employee leads to /mot-de-passe.
+additional_redirect_urls = ["http://localhost:8080/mot-de-passe"]
+# Public sign-ups are disabled: the manager account is created by hand in the
+# Supabase dashboard, employees are invited by the manager (inviter-employe).
 enable_signup = false
 
 [auth.email]
@@ -25,4 +28,8 @@ enable_confirmations = false
 
 [functions.envoyer-sms]
 # The function checks the caller itself (see index.ts).
+verify_jwt = false
+
+[functions.inviter-employe]
+# The function checks the caller itself: manager profile only (see index.ts).
 verify_jwt = false

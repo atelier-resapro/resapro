@@ -62,6 +62,27 @@ join public.prestations p on p.nom in ('Coupe femme', 'Coupe homme')
 where e.nom = 'Léa'
 on conflict do nothing;
 
+-- Two more fictional employees for the accounts (invite them from /gerant/employes):
+-- Julie and Thomas, Tuesday to Saturday, 9:00 to 18:00, cuts only.
+insert into public.employes (nom, telephone)
+select v.nom, v.telephone
+from (values ('Julie', '0639980202'), ('Thomas', '0639980203')) as v (nom, telephone)
+where not exists (select 1 from public.employes e where e.nom = v.nom);
+
+insert into public.horaires (employe_id, jour_semaine, heure_debut, heure_fin)
+select e.id, j, '09:00', '18:00'
+from public.employes e
+cross join generate_series(2, 6) as j
+where e.nom in ('Julie', 'Thomas')
+  and not exists (select 1 from public.horaires h where h.employe_id = e.id);
+
+insert into public.employe_prestations (employe_id, prestation_id)
+select e.id, p.id
+from public.employes e
+join public.prestations p on p.nom in ('Coupe femme', 'Coupe homme')
+where e.nom in ('Julie', 'Thomas')
+on conflict do nothing;
+
 -- Fictional appointments on the first three open days from today
 -- (jour_n = 1 is the first open day, 2 the next one, ...), on the manager's agenda.
 with jours as (
