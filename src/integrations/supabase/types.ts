@@ -126,7 +126,13 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      creneaux_libres: {
+        Args: { p_date: string };
+        Returns: {
+          creneau_id: string;
+          heure_debut: string;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;

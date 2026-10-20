@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import SiteLayout from "@/components/SiteLayout";
 import PrestationCard from "@/components/PrestationCard";
 import { usePrestations } from "@/hooks/usePrestations";
@@ -10,6 +12,9 @@ const Index = () => {
       <section className="mb-8 text-center">
         <h1 className="text-4xl font-bold text-primary">RésaPro</h1>
         <p className="mt-2 text-lg text-muted-foreground">Votre rendez-vous coiffure, sans téléphoner</p>
+        <Button asChild size="lg" className="mt-5">
+          <Link to="/reserver">Prendre rendez-vous</Link>
+        </Button>
       </section>
 
       <section aria-labelledby="titre-prestations">
