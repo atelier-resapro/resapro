@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { normaliserTelephone } from "@/lib/phone";
+import { envoyerSms } from "@/lib/sms";
 
 interface BookingFormProps {
   prestationId: string;
@@ -37,6 +38,8 @@ const BookingForm = ({ prestationId, creneauId, date, onBooked }: BookingFormPro
     onSuccess: (rendezVousId) => {
       queryClient.invalidateQueries({ queryKey: ["creneaux-libres", date] });
       toast.success("Rendez-vous réservé");
+      // Confirmation SMS: sent in the background, a failure changes nothing for the client.
+      void envoyerSms(rendezVousId, "confirmation");
       onBooked(rendezVousId);
     },
     onError: (error: Error) => {

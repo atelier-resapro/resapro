@@ -1,5 +1,10 @@
 import { useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import ConfirmButton from "@/components/ConfirmButton";
 import { Card, CardContent } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
+import { envoyerSms } from "@/lib/sms";
 import { useRendezVousGerant } from "@/hooks/useRendezVousGerant";
 import { formatHeure, formatJour, toISODate } from "@/lib/dates";
 import { formatTelephone } from "@/lib/phone";
@@ -8,6 +13,7 @@ import { cn } from "@/lib/utils";
 type Periode = "jour" | "semaine";
 
 const GerantPlanning = () => {
+  const queryClient = useQueryClient();
   const [periode, setPeriode] = useState<Periode>("jour");
 
   const { aujourdhui, fin } = useMemo(() => {
@@ -17,6 +23,27 @@ const GerantPlanning = () => {
   }, []);
 
   const { data: rendezVous, isLoading, error } = useRendezVousGerant(aujourdhui, periode === "jour" ? aujourdhui : fin);
+
+  const annuler = useMutation({
+    mutationFn: async (rendezVousId: string) => {
+      const { error } = await supabase
+        .from("rendez_vous")
+        .update({ statut: "annule" })
+        .eq("id", rendezVousId)
+        .eq("statut", "confirme");
+      if (error) throw error;
+      return rendezVousId;
+    },
+    onSuccess: async (rendezVousId) => {
+      queryClient.invalidateQueries({ queryKey: ["gerant"] });
+      queryClient.invalidateQueries({ queryKey: ["creneaux-libres"] });
+      // The cancellation is done; the SMS is a bonus that never blocks it.
+      const envoye = await envoyerSms(rendezVousId, "annulation");
+      if (envoye) toast.success("Rendez-vous annulé, le client a été prévenu par SMS");
+      else toast.warning("Rendez-vous annulé, mais le SMS n'a pas pu être envoyé");
+    },
+    onError: () => toast.error("Impossible d'annuler ce rendez-vous."),
+  });
 
   // Group by day
   const parJour = useMemo(() => {
@@ -77,11 +104,11 @@ const GerantPlanning = () => {
               {liste.map((rdv) => (
                 <li key={rdv.id}>
                   <Card>
-                    <CardContent className="flex items-center gap-4 p-4 sm:p-4">
+                    <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-2 p-4 sm:p-4">
                       <p className="w-16 shrink-0 text-lg font-semibold text-primary">
                         {formatHeure(rdv.creneaux.heure_debut)}
                       </p>
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 basis-40">
                         <p className="font-medium">{rdv.prestations?.nom}</p>
                         <p className="truncate text-sm text-muted-foreground">
                           {rdv.clients?.nom} ·{" "}
@@ -90,6 +117,13 @@ const GerantPlanning = () => {
                           </a>
                         </p>
                       </div>
+                      <ConfirmButton
+                        question="Annuler ce rendez-vous ?"
+                        disabled={annuler.isPending}
+                        onConfirm={() => annuler.mutate(rdv.id)}
+                      >
+                        Annuler
+                      </ConfirmButton>
                     </CardContent>
                   </Card>
                 </li>
