@@ -79,12 +79,14 @@ Deno.serve(async (req) => {
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
-  // A cancellation can only be triggered by the signed-in manager.
+  // A cancellation can only be triggered by the signed-in manager (profile 'gerant').
   if (type === "annulation") {
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
     if (!token) return json({ error: "Connexion requise" }, 401);
     const { data, error } = await admin.auth.getUser(token);
     if (error || !data.user) return json({ error: "Connexion requise" }, 401);
+    const { data: profil } = await admin.from("profils").select("role").eq("user_id", data.user.id).maybeSingle();
+    if (profil?.role !== "gerant") return json({ error: "Réservé au gérant" }, 403);
   }
 
   // The appointment and the phone number are read here, on the server.

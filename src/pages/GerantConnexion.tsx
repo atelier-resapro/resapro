@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
 
-// No sign-up here: the manager account is created by hand in Supabase.
+// Login of the manager and of the employees. No sign-up here: the manager account
+// is created by hand in Supabase, employees are invited by the manager.
+// After login, the layouts send each role to its own space.
 const GerantConnexion = () => {
   const { session, loading } = useSession();
   const navigate = useNavigate();
@@ -40,8 +42,8 @@ const GerantConnexion = () => {
     <main className="container flex min-h-screen max-w-md flex-col justify-center py-8">
       <Card>
         <CardHeader className="text-center">
-          <h1 className="text-2xl font-semibold leading-none tracking-tight">Connexion du gérant</h1>
-          <CardDescription>Accès réservé au salon.</CardDescription>
+          <h1 className="text-2xl font-semibold leading-none tracking-tight">Connexion</h1>
+          <CardDescription>Accès réservé au gérant et aux employés du salon.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

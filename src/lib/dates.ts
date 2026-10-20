@@ -44,6 +44,16 @@ export function formatJourCourt(iso: string): { semaine: string; numero: string;
   };
 }
 
+/** Local time of a Date -> "HH:MM" (to pass to formatHeure) */
+export function toHeure(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/** 1 (Monday, like isodow) -> "lundi" */
+export function nomJourSemaine(jour: number): string {
+  return ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"][jour - 1] ?? "";
+}
+
 /** "09:00:00" -> "9 h 00" */
 export function formatHeure(time: string): string {
   const [h, m] = time.split(":");
