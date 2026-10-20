@@ -24,3 +24,36 @@ cross join generate_series(
 ) as t
 where extract(dow from d) in (2, 3, 4, 5, 6)
 on conflict (date, heure_debut) do nothing;
+
+-- Fictional clients (phone numbers in the fictional range 06 39 98 xx xx)
+insert into public.clients (nom, telephone) values
+  ('Camille Martin', '0639980101'),
+  ('Julien Bernard', '0639980102'),
+  ('Sophie Lefèvre', '0639980103'),
+  ('Thomas Moreau', '0639980104'),
+  ('Émilie Garnier', '0639980105'),
+  ('Nicolas Petit', '0639980106')
+on conflict (telephone) do nothing;
+
+-- Fictional appointments on the first three open days from today
+-- (jour_n = 1 is the first open day, 2 the next one, ...).
+with jours as (
+  select date, row_number() over (order by date) as n
+  from (select distinct date from public.creneaux where date >= current_date) d
+)
+insert into public.rendez_vous (client_id, prestation_id, creneau_id, statut)
+select cl.id, pr.id, cr.id, v.statut
+from (values
+  (1, '10:00', '0639980101', 'Coupe femme', 'confirme'),
+  (1, '11:30', '0639980102', 'Coupe homme', 'confirme'),
+  (1, '14:00', '0639980103', 'Couleur',     'confirme'),
+  (2, '09:30', '0639980104', 'Barbe',       'confirme'),
+  (2, '15:00', '0639980105', 'Coupe femme', 'confirme'),
+  (3, '10:30', '0639980106', 'Coupe homme', 'confirme'),
+  (3, '16:00', '0639980101', 'Coupe femme', 'annule')
+) as v (jour_n, heure, tel, prestation, statut)
+join jours j on j.n = v.jour_n
+join public.creneaux cr on cr.date = j.date and cr.heure_debut = v.heure::time
+join public.clients cl on cl.telephone = v.tel
+join public.prestations pr on pr.nom = v.prestation
+where not exists (select 1 from public.rendez_vous r where r.creneau_id = cr.id);
