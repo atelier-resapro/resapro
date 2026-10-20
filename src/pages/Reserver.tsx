@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import SiteLayout from "@/components/SiteLayout";
 import DayPicker from "@/components/DayPicker";
 import BookingForm from "@/components/BookingForm";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 
 const Reserver = () => {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const { data: prestations, isLoading } = usePrestations();
   const [prestationId, setPrestationId] = useState<string | null>(params.get("prestation"));
   const [date, setDate] = useState<string | null>(null);
@@ -89,7 +90,7 @@ const Reserver = () => {
             prestationId={prestation.id}
             creneauId={creneauId}
             date={date}
-            onBooked={() => setCreneauId(null)}
+            onBooked={(id) => navigate(`/confirmation/${id}`)}
           />
         </section>
       )}

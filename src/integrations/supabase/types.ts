@@ -142,6 +142,15 @@ export type Database = {
         };
         Returns: string;
       };
+      recapitulatif: {
+        Args: { p_rendez_vous_id: string };
+        Returns: {
+          prestation: string;
+          jour: string;
+          heure: string;
+          prix: number;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;
