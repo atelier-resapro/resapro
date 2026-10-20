@@ -7,6 +7,8 @@ import Confirmation from "./pages/Confirmation";
 import GerantLayout from "./components/GerantLayout";
 import GerantConnexion from "./pages/GerantConnexion";
 import GerantPlanning from "./pages/GerantPlanning";
+import GerantPrestations from "./pages/GerantPrestations";
+import GerantJournees from "./pages/GerantJournees";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +24,8 @@ const App = () => (
         <Route path="/gerant/connexion" element={<GerantConnexion />} />
         <Route path="/gerant" element={<GerantLayout />}>
           <Route index element={<GerantPlanning />} />
+          <Route path="prestations" element={<GerantPrestations />} />
+          <Route path="journees" element={<GerantJournees />} />
         </Route>
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />

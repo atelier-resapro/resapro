@@ -5,7 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/useSession";
 import { cn } from "@/lib/utils";
 
-const liens = [{ to: "/gerant", label: "Planning", end: true }];
+const liens = [
+  { to: "/gerant", label: "Planning", end: true },
+  { to: "/gerant/prestations", label: "Prestations", end: false },
+  { to: "/gerant/journees", label: "Journées", end: false },
+];
 
 /**
  * Layout of every /gerant/* page except the login.
