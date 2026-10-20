@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import SiteLayout from "@/components/SiteLayout";
 import DayPicker from "@/components/DayPicker";
+import BookingForm from "@/components/BookingForm";
 import SlotPicker from "@/components/SlotPicker";
 import PrestationCard from "@/components/PrestationCard";
 import { usePrestations } from "@/hooks/usePrestations";
@@ -75,6 +76,21 @@ const Reserver = () => {
             3. Choisissez un horaire : {formatJour(date)}
           </h2>
           <SlotPicker date={date} value={creneauId} onChange={(id) => setCreneauId(id)} />
+        </section>
+      )}
+      {prestation && date && creneauId && (
+        <section aria-labelledby="etape-coordonnees" className="mb-8">
+          <h2 id="etape-coordonnees" className="mb-3 text-lg font-semibold">
+            4. Vos coordonnées
+          </h2>
+          {/* key: a new slot choice starts from a clean form (and clears any previous error) */}
+          <BookingForm
+            key={creneauId}
+            prestationId={prestation.id}
+            creneauId={creneauId}
+            date={date}
+            onBooked={() => setCreneauId(null)}
+          />
         </section>
       )}
     </SiteLayout>

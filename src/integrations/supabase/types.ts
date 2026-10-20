@@ -133,6 +133,15 @@ export type Database = {
           heure_debut: string;
         }[];
       };
+      reserver: {
+        Args: {
+          p_nom: string;
+          p_telephone: string;
+          p_prestation_id: string;
+          p_creneau_id: string;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       [_ in never]: never;
