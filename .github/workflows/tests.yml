@@ -61,7 +61,11 @@ jobs:
           echo "SUPABASE_CLI=$(command -v supabase)" >> "$GITHUB_ENV"
 
       - name: Règles de la base (pgTAP)
-        run: npm run test:db
+        run: |
+          # Throwaway base only: the hook tests act as the Auth server.
+          psql postgresql://supabase_admin:postgres@127.0.0.1:54322/postgres -X -q -v ON_ERROR_STOP=1 \
+            -c 'grant supabase_auth_admin to postgres'
+          npm run test:db
 
       - name: Contre-épreuve (chaque règle cassée exprès)
         run: npm run test:db:sabotage
