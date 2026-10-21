@@ -39,8 +39,8 @@ const GerantPlanning = () => {
       queryClient.invalidateQueries({ queryKey: ["creneaux-libres"] });
       // The cancellation is done; the SMS is a bonus that never blocks it.
       const envoye = await envoyerSms(rendezVousId, "annulation");
-      if (envoye) toast.success("Rendez-vous annulé, le client a été prévenu par SMS");
-      else toast.warning("Rendez-vous annulé, mais le SMS n'a pas pu être envoyé");
+      if (envoye) toast.success("Rendez-vous annulé, le client et l’employé ont été prévenus par SMS");
+      else toast.warning("Rendez-vous annulé, mais certains SMS n'ont pas pu être envoyés");
     },
     onError: () => toast.error("Impossible d'annuler ce rendez-vous."),
   });

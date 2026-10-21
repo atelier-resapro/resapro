@@ -1,13 +1,13 @@
-// Edge Function (Deno): sends a confirmation or cancellation SMS through Brevo.
+// Edge Function (Deno): sends appointment SMS through Brevo, server-side only.
 //
 // Secrets (set with `supabase secrets set`, never written in the code):
 //   SMS_API_KEY               Brevo API key
-//   SITE_URL                  (optional) public address of the site, added to the cancellation SMS
+//   SITE_URL                  optional public booking URL for cancellations
 // Provided by Supabase automatically:
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 //
 // Call from the app:
-//   supabase.functions.invoke("envoyer-sms", { body: { rendez_vous_id, type: "confirmation" | "annulation" } })
+//   body: { rendez_vous_id, type: "confirmation" | "annulation" | "deplacement" }
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -65,6 +65,7 @@ Deno.serve(async (req) => {
   let payload: { rendez_vous_id?: unknown; type?: unknown };
   try {
     payload = await req.json();
+    if (!payload || typeof payload !== "object") return json({ error: "Requête invalide" }, 400);
   } catch {
     return json({ error: "Requête invalide" }, 400);
   }
@@ -72,7 +73,7 @@ Deno.serve(async (req) => {
   if (typeof rendez_vous_id !== "string" || !UUID_RE.test(rendez_vous_id)) {
     return json({ error: "rendez_vous_id invalide" }, 400);
   }
-  if (type !== "confirmation" && type !== "annulation") {
+  if (type !== "confirmation" && type !== "annulation" && type !== "deplacement") {
     return json({ error: "type invalide" }, 400);
   }
 
@@ -86,14 +87,62 @@ Deno.serve(async (req) => {
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
-  // A cancellation can only be triggered by the signed-in manager (profile 'gerant').
-  if (type === "annulation") {
+  // The database records real changes, including their old/new start times.
+  // The caller supplies neither recipients nor message content.
+  if (type !== "confirmation") {
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
     if (!token) return json({ error: "Connexion requise" }, 401);
     const { data, error } = await admin.auth.getUser(token);
     if (error || !data.user) return json({ error: "Connexion requise" }, 401);
     const { data: profil } = await admin.from("profils").select("role").eq("user_id", data.user.id).maybeSingle();
-    if (profil?.role !== "gerant") return json({ error: "Réservé au gérant" }, 403);
+    if (profil?.role !== "gerant" && profil?.role !== "client") return json({ error: "Envoi non autorisé" }, 403);
+    // Check ownership even when no pending event exists (no information leak).
+    if (profil.role === "client") {
+      const { data: owned } = await admin.from("rendez_vous")
+        .select("clients!inner(user_id)").eq("id", rendez_vous_id)
+        .eq("clients.user_id", data.user.id).maybeSingle();
+      if (!owned) return json({ error: "Envoi non autorisé" }, 403);
+    }
+    const { data: notifications, error: claimError } = await admin.rpc("reclamer_notifications_rendez_vous", {
+      p_rendez_vous_id: rendez_vous_id, p_type: type, p_user_id: data.user.id,
+    });
+    if (claimError) return json({ error: "Lecture impossible" }, 500);
+    const results = await Promise.all((notifications ?? []).map(async (n: {
+      id: string; reservation: string; telephone: string | null; destinataire: string;
+      client_nom: string; prestation: string; ancien_debut: string; debut: string;
+    }) => {
+      if (!n.telephone) return false;
+      const ancien = `${formatJour(new Date(n.ancien_debut))} à ${formatHeure(new Date(n.ancien_debut))}`;
+      const nouveau = `${formatJour(new Date(n.debut))} à ${formatHeure(new Date(n.debut))}`;
+      const sujet = n.destinataire === "client" ? "votre rendez-vous" : `le rendez-vous de ${n.client_nom}`;
+      const siteUrl = Deno.env.get("SITE_URL");
+      const reprise = type === "annulation" && n.destinataire === "client"
+        ? (siteUrl ? ` Pour reprendre rendez-vous : ${siteUrl}` : " Pour reprendre rendez-vous, rendez-vous sur le site RésaPro.")
+        : "";
+      const content = type === "deplacement"
+        ? `RésaPro : ${sujet} ${n.prestation} du ${ancien} est déplacé au ${nouveau}.`
+        : `RésaPro : ${sujet} ${n.prestation} du ${ancien} est annulé.${reprise}`;
+      try {
+        const response = await fetch("https://api.brevo.com/v3/transactionalSMS/sms", {
+          method: "POST", signal: AbortSignal.timeout(10000),
+          headers: { "api-key": smsApiKey, "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ sender: "RESAPRO", recipient: versInternational(n.telephone), content, type: "transactional" }),
+        });
+        if (!response.ok) { console.error("Brevo refused SMS, status", response.status); return false; }
+        const { error: saveError } = await admin.from("notifications_rendez_vous")
+          .update({ envoye_le: new Date().toISOString() }).eq("id", n.id).eq("reservation", n.reservation);
+        return !saveError;
+      } catch {
+        console.error("SMS delivery unavailable");
+        return false;
+      }
+    }));
+    if (results.some(ok => !ok)) return json({ error: "Certains SMS n'ont pas pu être envoyés" }, 502);
+    // Empty claims may also mean another call is in progress or retries exhausted.
+    const { data: pending, error: pendingError } = await admin.from("notifications_rendez_vous")
+      .select("id").eq("rendez_vous_id", rendez_vous_id).eq("type", type).is("envoye_le", null).limit(1);
+    if (pendingError || pending?.length) return json({ error: "Des SMS restent en attente" }, 503);
+    return json({ ok: true });
   }
 
   // The appointment and the phone number are read here, on the server.
@@ -103,7 +152,7 @@ Deno.serve(async (req) => {
     .eq("id", rendez_vous_id)
     .maybeSingle();
   if (lectureError) {
-    console.error("Read error:", lectureError.message);
+    console.error("Appointment read failed");
     return json({ error: "Lecture impossible" }, 500);
   }
   if (!rdv) return json({ error: "Rendez-vous introuvable" }, 404);
@@ -111,25 +160,15 @@ Deno.serve(async (req) => {
   // deno-lint-ignore no-explicit-any
   const { clients, prestations } = rdv as any;
 
-  if (type === "confirmation") {
-    const age = Date.now() - new Date(rdv.cree_le).getTime();
-    if (rdv.statut !== "confirme" || age > CONFIRMATION_WINDOW_MS) {
-      return json({ error: "Envoi non autorisé" }, 403);
-    }
-  } else if (rdv.statut !== "annule") {
-    return json({ error: "Ce rendez-vous n'est pas annulé" }, 409);
+  const age = Date.now() - new Date(rdv.cree_le).getTime();
+  if (rdv.statut !== "confirme" || !Number.isFinite(age) || age < 0 || age > CONFIRMATION_WINDOW_MS) {
+    return json({ error: "Envoi non autorisé" }, 403);
   }
 
   // The start works for both systems (old slots and employees).
   const jour = formatJour(new Date(rdv.debut));
   const heure = formatHeure(new Date(rdv.debut));
-  const siteUrl = Deno.env.get("SITE_URL");
-
-  const contenu =
-    type === "confirmation"
-      ? `RésaPro : votre rendez-vous ${prestations.nom} du ${jour} à ${heure} est confirmé.`
-      : `RésaPro : votre rendez-vous ${prestations.nom} du ${jour} à ${heure} est annulé. ` +
-        (siteUrl ? `Pour reprendre rendez-vous : ${siteUrl}` : "Pour reprendre rendez-vous, rendez-vous sur le site RésaPro.");
+  const contenu = `RésaPro : votre rendez-vous ${prestations.nom} du ${jour} à ${heure} est confirmé.`;
 
   const reponse = await fetch("https://api.brevo.com/v3/transactionalSMS/sms", {
     method: "POST",

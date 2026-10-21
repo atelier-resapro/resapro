@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useEmployesGerant } from "@/hooks/useEmployesGerant";
 import { cn } from "@/lib/utils";
+import { normaliserTelephone } from "@/lib/phone";
 
 /** Message returned by the Edge Function ({ error: "..." }), or a generic one. */
 async function messageErreur(error: unknown): Promise<string> {
@@ -27,7 +28,19 @@ const GerantEmployes = () => {
   const queryClient = useQueryClient();
   const { data: employes, isLoading, error } = useEmployesGerant();
   const [emails, setEmails] = useState<Record<string, string>>({});
+  const [telephones, setTelephones] = useState<Record<string, string>>({});
   const [erreurs, setErreurs] = useState<Record<string, string | null>>({});
+
+  const enregistrerTelephone = useMutation({
+    mutationFn: async ({ id, valeur }: { id: string; valeur: string }) => {
+      const telephone = normaliserTelephone(valeur);
+      if (!telephone || !/^0[67]/.test(telephone)) throw new Error('Indiquez un mobile français valide (06 ou 07).');
+      const { error } = await supabase.from('employes').update({ telephone }).eq('id', id);
+      if (error) throw new Error('Impossible d’enregistrer le mobile.');
+    },
+    onSuccess: () => { toast.success('Mobile enregistré'); queryClient.invalidateQueries({ queryKey: ['gerant', 'employes'] }); },
+    onError: (e: Error, { id }) => setErreurs(er => ({ ...er, [id]: e.message })),
+  });
 
   // The invitation is sent by the server (inviter-employe): no service key in the browser.
   const inviter = useMutation({
@@ -100,13 +113,23 @@ const GerantEmployes = () => {
                     <Button type="submit" disabled={inviter.isPending}>
                       Inviter
                     </Button>
-                    {erreurs[emp.id] && (
-                      <p role="alert" className="basis-full text-sm text-destructive">
-                        {erreurs[emp.id]}
-                      </p>
-                    )}
                   </form>
                 )}
+                <form className="flex flex-wrap items-end gap-2" onSubmit={e => {
+                  e.preventDefault();
+                  setErreurs(er => ({ ...er, [emp.id]: null }));
+                  enregistrerTelephone.mutate({ id: emp.id, valeur: telephones[emp.id] ?? emp.telephone ?? '' });
+                }}>
+                  <div className="min-w-0 flex-1 basis-56 space-y-2">
+                    <Label htmlFor={`mobile-${emp.id}`}>Mobile de {emp.nom} pour les SMS</Label>
+                    <Input id={`mobile-${emp.id}`} type="tel" autoComplete="off"
+                      value={telephones[emp.id] ?? emp.telephone ?? ''}
+                      onChange={e => setTelephones(t => ({ ...t, [emp.id]: e.target.value }))} />
+                  </div>
+                  <Button type="submit" disabled={enregistrerTelephone.isPending}>Enregistrer le mobile</Button>
+                </form>
+                {!emp.telephone && <p className="text-sm text-muted-foreground">Renseignez le mobile pour recevoir les déplacements et annulations par SMS.</p>}
+                {erreurs[emp.id] && <p role="alert" className="text-sm text-destructive">{erreurs[emp.id]}</p>}
               </CardContent>
             </Card>
           </li>

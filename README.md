@@ -159,3 +159,48 @@ Exécuter `npm run test:db` avec la pile Supabase locale démarrée.
 `npm run test:e2e:ui` inclut les parcours client et gérant avec API simulée,
 ainsi qu’un contrôle mobile 375 × 667 montrant deux rendez-vous à venir sans
 défilement. Au-delà de la hauteur disponible, la liste reste défilable.
+
+### Rattachement et SMS des modifications
+
+Le premier OTP **vérifié** rattache la fiche portant le même numéro français
+normalisé au compte : son identifiant ne change pas, ses anciens rendez-vous
+apparaissent donc dans `/client`, sans recopier les réservations. Un téléphone
+non confirmé ne donne aucun accès ; le nom existant et les rôles salariés sont
+préservés. Le test `supabase/tests/notifications_rendez_vous_test.sql` crée un
+rendez-vous avant le compte et contrôle sa visibilité après vérification.
+`supabase/tests/client_sans_historique_test.sql` couvre aussi la première
+confirmation d’un numéro sans fiche ni rendez-vous, sous le rôle Auth : le
+déclencheur ne doit lever aucune erreur, le profil client doit être créé et
+`mes_rendez_vous` doit retourner une liste vide. Le parcours OTP réel correspondant
+est dans `tests/e2e/client-auth.spec.ts` avec le deuxième numéro local de test
+(`06 39 98 99 02`, code `654321`) ; utiliser une base locale de test sans
+réservations pour ce numéro. Ces tests ne simulent pas le déclencheur et ne
+déclenchent aucun SMS payant.
+
+Appliquer `20261021180000_notifications_rendez_vous.sql`, puis déployer
+`envoyer-sms`. Dans `/gerant/employes`, renseigner le mobile de chaque employé.
+Après déplacement ou annulation, l’interface appelle cette fonction avec
+l’identifiant du rendez-vous et le type de changement. Elle envoie au client
+et à l’employé les notifications enregistrées par le déclencheur SQL, avec
+l’ancien et le nouvel horaire pour un déplacement. Les annulations du gérant
+passent par le même mécanisme. Aucun rappel la veille n’est prévu.
+
+La table interne `notifications_rendez_vous` n’est accessible qu’au serveur
+(RLS activée). Les appels concurrents ne réclament pas les mêmes notifications.
+Un destinataire déjà accepté par Brevo n’est pas renvoyé lors d’une reprise.
+Une erreur partielle affiche un avertissement sans annuler la modification.
+Un nouvel appel à `envoyer-sms` après cinq minutes reprend les destinataires
+en échec, avec trois tentatives maximum ; il n’y a pas de reprise planifiée.
+Une interruption du navigateur avant l’appel peut donc laisser des envois en
+attente. Une coupure après acceptation par Brevo mais avant son enregistrement
+en base peut aussi entraîner un doublon lors d’une reprise.
+Les instantanés de livraison sont supprimés après 30 jours lors du prochain
+changement de rendez-vous.
+
+Conserver `SMS_API_KEY` uniquement dans les **secrets Supabase**, jamais dans
+un fichier `VITE_*`. Les tests d’envoi simulent Brevo : aucun SMS payant n’est
+envoyé par la suite de tests. Avant mise en service, vérifier les crédits et
+le plafond de dépenses du compte Brevo, et désactiver toute recharge
+automatique non plafonnée. Ce réglage du compte fournisseur ne peut pas être
+activé par le code de l’application ; sa configuration effective reste à
+vérifier dans le compte Brevo.
