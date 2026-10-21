@@ -17,9 +17,18 @@ function server(options = {}) {
     destinataire, client_nom: 'Camille', prestation: 'Coupe',
     ancien_debut: '2030-10-22T08:00:00Z', debut: '2030-10-23T09:00:00Z',
   }));
+  // Like reclamer_confirmation_sms: the confirmation is claimed once, then never again.
+  let confirmation = 'confirmation' in options ? options.confirmation
+    : { telephone: '0639989801', prestation: 'Coupe', debut: '2030-10-22T08:00:00Z' };
   const admin = {
     auth: { getUser: async () => ({ data: { user: options.invalidToken ? null : { id: 'user-id' } } }) },
-    rpc: async () => { calls.push('claim'); return { data: rows }; },
+    rpc: async name => {
+      calls.push(name);
+      if (name !== 'reclamer_confirmation_sms') return { data: rows };
+      if (options.claimError) return { data: null, error: { message: 'down' } };
+      const row = confirmation; confirmation = null;
+      return { data: row ? [row] : [] };
+    },
     from: table => {
       const query = {
         select: () => query, eq: () => query, is: () => query,
@@ -107,20 +116,28 @@ test('clé serveur absente : aucun appel Brevo', async () => {
 });
 
 test('la confirmation publique continue d’envoyer seulement au client', async () => {
-  const s = server({ appointment: { statut: 'confirme', cree_le: new Date().toJSON(),
-    debut: '2030-10-22T08:00:00Z', clients: { telephone: '0639989801' }, prestations: { nom: 'Coupe' } } });
+  const s = server();
   assert.equal((await s.request('confirmation', '')).status, 200);
   assert.equal(s.sent.length, 1);
   assert.equal(s.sent[0].recipient, '33639989801');
-  assert.deepEqual(s.calls, []);
+  assert.match(s.sent[0].content, /votre rendez-vous Coupe du .* à 10 h 00 est confirmé/);
+  assert.deepEqual(s.calls, ['reclamer_confirmation_sms']);
 });
-for (const appointment of [
-  { statut: 'annule', cree_le: new Date().toJSON() },
-  { statut: 'confirme', cree_le: '2020-01-01T00:00:00Z' },
-]) {
-  test(`la confirmation refuse une réservation ancienne ou annulée ${JSON.stringify(appointment)}`, async () => {
-    const s = server({ appointment });
-    assert.equal((await s.request('confirmation')).status, 403);
-    assert.equal(s.sent.length, 0);
-  });
-}
+test('la confirmation ne part qu’une seule fois par réservation, même en appels répétés', async () => {
+  const s = server();
+  assert.equal((await s.request('confirmation', '')).status, 200);
+  const statuts = await Promise.all(Array.from({ length: 20 }, () => s.request('confirmation', '')));
+  assert.ok(statuts.every(r => r.status === 403));
+  assert.equal(s.sent.length, 1);
+});
+test('réservation inconnue, ancienne, annulée ou déjà confirmée : aucun SMS', async () => {
+  const s = server({ confirmation: null });
+  assert.equal((await s.request('confirmation')).status, 403);
+  assert.equal(s.sent.length, 0);
+});
+test('réclamation impossible : aucun SMS et aucun détail dans les logs', async () => {
+  const s = server({ claimError: true });
+  assert.equal((await s.request('confirmation')).status, 500);
+  assert.equal(s.sent.length, 0);
+  assert.doesNotMatch(s.logs.join(' '), /0639989801|secret-fixture/);
+});
