@@ -1,20 +1,17 @@
-import { supabase } from "@/integrations/supabase/client";
-
 /**
- * Asks the server to notify the client and, for changes, the employee.
- * A sending error must NEVER block a booking or a cancellation:
- * this function never throws, it only tells whether it worked.
+ * Sends the SMS straight from the browser with the SMS service key.
+ * The key comes from a VITE_ variable, so Vite copies it into the published JavaScript.
  */
+const SMS_API_KEY = import.meta.env.VITE_SMS_API_KEY;
+
 export async function envoyerSms(rendezVousId: string, type: "confirmation" | "annulation" | "deplacement"): Promise<boolean> {
   try {
-    const { error } = await supabase.functions.invoke("envoyer-sms", {
-      body: { rendez_vous_id: rendezVousId, type },
+    const reponse = await fetch("https://api.brevo.com/v3/transactionalSMS/sms", {
+      method: "POST",
+      headers: { "api-key": SMS_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ sender: "RESAPRO", type: "transactional", tag: `${type}-${rendezVousId}` }),
     });
-    if (error) {
-      console.warn("SMS not sent:", error.message);
-      return false;
-    }
-    return true;
+    return reponse.ok;
   } catch (e) {
     console.warn("SMS not sent:", e);
     return false;
