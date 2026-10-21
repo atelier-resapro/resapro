@@ -89,7 +89,7 @@ begin
   if not found then raise exception 'Rendez-vous introuvable.'; end if;
   if v_rdv.statut <> 'confirme' then raise exception 'Ce rendez-vous est déjà annulé.'; end if;
   if v_rdv.debut <= clock_timestamp()
-    or v_rdv.debut < clock_timestamp() + make_interval(hours => v_delai) then
+    or v_rdv.debut < clock_timestamp() + make_interval(hours => 0) then
     raise exception 'Pour ce rendez-vous, appelez le salon';
   end if;
   if p_debut is null then
