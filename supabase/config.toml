@@ -36,6 +36,9 @@ max_frequency = "60s"
 [auth.sms.test_otp]
 33639989901 = "123456"
 33639989902 = "654321"
+# Real client journey only (tests/e2e/parcours-client.spec.ts): Auth waits
+# 60 seconds between two codes of the same number.
+33639989903 = "135790"
 
 # CLI requires an enabled provider even with test_otp and a Send SMS hook.
 # Inert local placeholders: the SQL hook replaces this provider entirely.

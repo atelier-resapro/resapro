@@ -76,8 +76,10 @@ jobs:
       - name: Parcours client de bout en bout
         env:
           E2E_SUPABASE_URL: http://127.0.0.1:54321
-          E2E_TELEPHONE: '0639989901'
-          E2E_CODE: '123456'
+          # Own test number: Auth refuses a second code within 60 seconds,
+          # and the browser tests above just used 06 39 98 99 01.
+          E2E_TELEPHONE: '0639989903'
+          E2E_CODE: '135790'
         run: E2E_SUPABASE_KEY="$SUPABASE_TEST_ANON_KEY" npm run test:e2e:parcours
 
       - name: Journal des fonctions
