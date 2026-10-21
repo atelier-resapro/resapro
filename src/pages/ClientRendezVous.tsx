@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 import { formatJour, formatHeure, jourEtHeureSalon } from '@/lib/dates';
 import { formatPrix } from '@/lib/format';
+import { envoyerSms } from '@/lib/sms';
 
 type RendezVous = Database['public']['Functions']['mes_rendez_vous']['Returns'][number];
 function dateRendezVous(debut: string) {
@@ -81,6 +82,8 @@ export default function ClientRendezVous() {
       if (error) { setErreur(error.message); return; }
       setEdition(null);
       toast.success(debut ? 'Rendez-vous déplacé' : 'Rendez-vous annulé');
+      const envoye = await envoyerSms(id, debut ? 'deplacement' : 'annulation');
+      if (!envoye) toast.warning('La modification est enregistrée, mais certains SMS n’ont pas pu être envoyés.');
     } catch { setErreur('Connexion impossible. Réessayez.'); }
     finally {
       await Promise.all([

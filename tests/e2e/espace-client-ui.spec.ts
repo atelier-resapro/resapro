@@ -41,6 +41,11 @@ test('déplace puis annule avec confirmation, et rafraîchit les listes', async 
   const rdv = rendezVous('00000000-0000-0000-0000-00000000dd01', 72);
   const nouveauDebut = future(96);
   const calls: unknown[] = [];
+  const sms: unknown[] = [];
+  await page.route('**/functions/v1/envoyer-sms', route => {
+    sms.push(route.request().postDataJSON());
+    return route.fulfill({ json: { ok: true } });
+  });
   await page.route('**/rest/v1/rpc/mes_rendez_vous', route => route.fulfill({ json: [rdv] }));
   await page.route('**/rest/v1/rpc/creneaux_deplacement_client', route => route.fulfill({ json: [{ debut: nouveauDebut }] }));
   await page.route('**/rest/v1/rpc/modifier_mon_rendez_vous', route => {
@@ -59,6 +64,7 @@ test('déplace puis annule avec confirmation, et rafraîchit les listes', async 
   await expect(page.getByText('Aucun rendez-vous à venir.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Annulés', exact: true })).toBeVisible();
   expect(calls).toEqual([{ p_rendez_vous_id: rdv.id, p_debut: nouveauDebut }, { p_rendez_vous_id: rdv.id }]);
+  expect(sms).toEqual([{ rendez_vous_id: rdv.id, type: 'deplacement' }, { rendez_vous_id: rdv.id, type: 'annulation' }]);
 });
 
 test('affiche un refus serveur sans annoncer un succès', async ({ page }) => {
@@ -71,6 +77,41 @@ test('affiche un refus serveur sans annoncer un succès', async ({ page }) => {
   await page.getByRole('button', { name: 'Oui', exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText('Pour ce rendez-vous, appelez le salon');
   await expect(page.getByText('Rendez-vous annulé', { exact: true })).toHaveCount(0);
+});
+
+test('une panne SMS conserve l’annulation et affiche un avertissement', async ({ page }) => {
+  await connecter(page);
+  const rdv = rendezVous('00000000-0000-0000-0000-00000000dd01', 72);
+  await page.route('**/rest/v1/rpc/mes_rendez_vous', route => route.fulfill({ json: [rdv] }));
+  await page.route('**/rest/v1/rpc/modifier_mon_rendez_vous', route => {
+    rdv.statut = 'annule';
+    return route.fulfill({ status: 204 });
+  });
+  await page.route('**/functions/v1/envoyer-sms', route => route.fulfill({ status: 502,
+    json: { error: 'Certains SMS n’ont pas pu être envoyés' } }));
+  await page.goto('/client');
+  await page.getByRole('button', { name: 'Annuler', exact: true }).click();
+  await page.getByRole('button', { name: 'Oui', exact: true }).click();
+  await expect(page.getByText('La modification est enregistrée, mais certains SMS n’ont pas pu être envoyés.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Annulés', exact: true })).toBeVisible();
+});
+
+test('le gérant enregistre le mobile de l’employé pour les notifications', async ({ page }) => {
+  await connecter(page, 'gerant');
+  let telephone: string | null = null;
+  await page.route('**/rest/v1/employes?*', route => {
+    if (route.request().method() === 'PATCH') {
+      telephone = route.request().postDataJSON().telephone;
+      return route.fulfill({ status: 204 });
+    }
+    return route.fulfill({ json: [{ id: 'employee-id', nom: 'Sophie', actif: true,
+      est_gerant: false, user_id: 'staff-id', telephone }] });
+  });
+  await page.goto('/gerant/employes');
+  await page.getByLabel('Mobile de Sophie pour les SMS').fill('+33 6 12 34 56 78');
+  await page.getByRole('button', { name: 'Enregistrer le mobile' }).click();
+  await expect(page.getByText('Mobile enregistré', { exact: true })).toBeVisible();
+  expect(telephone).toBe('0612345678');
 });
 
 test('le gérant règle le délai du salon', async ({ page }) => {
