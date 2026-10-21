@@ -1,42 +1,13 @@
 // Runs the pgTAP files of supabase/tests on the test database (see
-// base-de-test.mjs). `supabase db query` only returns the last result, so the
-// output of every top-level select is kept in a temporary table and read just
+// base-de-test.mjs). Only the last select is returned, so the output of
+// every top-level select is kept in a temporary table and read just
 // before the final rollback: nothing written by a test is ever committed.
 //
 //   node scripts/tests-base.mjs [fichier.sql ...]   all the files by default
 //   node scripts/tests-base.mjs --sabotage          each rule broken on purpose
 import { readFileSync, readdirSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { base, executerSql, projetDeTest, racine } from './base-de-test.mjs';
-
-/** Splits SQL into statements, ignoring ; inside strings, comments and $$ bodies. */
-export function instructions(sql) {
-  const resultat = [];
-  let debut = 0;
-  for (let i = 0; i < sql.length; i++) {
-    const c = sql[i];
-    if (c === "'" || c === '"') {
-      i = sql.indexOf(c, i + 1);
-      while (i >= 0 && sql[i + 1] === c) i = sql.indexOf(c, i + 2);
-    } else if (c === '-' && sql[i + 1] === '-') {
-      i = sql.indexOf('\n', i);
-      if (i < 0) i = sql.length;
-    } else if (c === '/' && sql[i + 1] === '*') {
-      i = sql.indexOf('*/', i) + 1;
-    } else if (c === '$') {
-      const tag = /^\$[A-Za-z_]*\$/.exec(sql.slice(i))?.[0];
-      if (tag) i = sql.indexOf(tag, i + tag.length) + tag.length - 1;
-    } else if (c === ';') {
-      resultat.push(sql.slice(debut, i));
-      debut = i + 1;
-    }
-    if (i < 0) throw new Error('Chaîne, commentaire ou bloc $$ non terminé.');
-  }
-  if (sql.slice(debut).trim()) resultat.push(sql.slice(debut));
-  return resultat;
-}
-
-const sansCommentaires = (instruction) => instruction.replace(/^(\s*--[^\n]*(\n|$))+/, '').trim();
+import { base, executerSql, instructions, projetDeTest, racine, sansCommentaires } from './base-de-test.mjs';
 
 /** Rewrites a pgTAP file so that its results are the last rows returned. */
 export function preparer(sql, sabotage = '') {
