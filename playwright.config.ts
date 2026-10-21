@@ -5,7 +5,7 @@ export default defineConfig({
   workers: 1,
   use: { baseURL: 'http://127.0.0.1:4179', browserName: 'chromium', channel: 'chrome' },
   projects: [
-    { name: 'ui', testMatch: /client-ui\.spec\.ts/ },
+    { name: 'ui', testMatch: /(?:client-ui|espace-client-ui)\.spec\.ts/ },
     { name: 'supabase-local', testMatch: /client-auth\.spec\.ts/ },
   ],
   webServer: {
