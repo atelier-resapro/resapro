@@ -6,11 +6,17 @@ select no_plan();
 
 select is_empty($$select id from public.clients where telephone = '0639989501'$$,
   'Le numéro de test ne possède aucune fiche ni aucun ancien rendez-vous');
+-- Only the Auth action runs as supabase_auth_admin: that role cannot reach
+-- the pgTAP functions (schema extensions), so the outcome is checked after.
 set local role supabase_auth_admin;
-select lives_ok($$insert into auth.users (id, phone) values
-  ('00000000-0000-0000-0000-00000000fa01', '33639989501')$$,
-  'Auth peut provisionner un compte sans historique');
+do $$ begin
+  insert into auth.users (id, phone) values ('00000000-0000-0000-0000-00000000fa01', '33639989501');
+  perform set_config('test.provision', 'ok', true);
+exception when others then
+  perform set_config('test.provision', sqlerrm, true);
+end $$;
 reset role;
+select is(current_setting('test.provision'), 'ok', 'Auth peut provisionner un compte sans historique');
 select is_empty($$select user_id from public.profils
   where user_id = '00000000-0000-0000-0000-00000000fa01'$$,
   'Avant vérification le compte ne reçoit aucun profil');
@@ -18,10 +24,16 @@ select is_empty($$select id from public.clients where telephone = '0639989501'$$
   'Avant vérification aucune fiche client n’est créée');
 
 set local role supabase_auth_admin;
-select lives_ok($$update auth.users set phone_confirmed_at = now(), last_sign_in_at = now()
-  where id = '00000000-0000-0000-0000-00000000fa01'$$,
-  'La première confirmation du téléphone sans rendez-vous ne bloque pas Auth');
+do $$ begin
+  update auth.users set phone_confirmed_at = now(), last_sign_in_at = now()
+  where id = '00000000-0000-0000-0000-00000000fa01';
+  perform set_config('test.confirmation', 'ok', true);
+exception when others then
+  perform set_config('test.confirmation', sqlerrm, true);
+end $$;
 reset role;
+select is(current_setting('test.confirmation'), 'ok',
+  'La première confirmation du téléphone sans rendez-vous ne bloque pas Auth');
 select ok((select phone_confirmed_at is not null from auth.users
   where id = '00000000-0000-0000-0000-00000000fa01'),
   'La confirmation du téléphone est enregistrée');

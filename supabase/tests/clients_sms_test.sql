@@ -65,14 +65,16 @@ select ok(not public.autoriser_code_client('33639989801'), 'Le quatrième envoi 
 update public.envois_codes_clients set demandes = array[now() - interval '61 minutes'] where telephone = '33639989801';
 select ok(public.autoriser_code_client('33639989801'), 'Le quota se libère après une heure');
 
+-- Only the hook runs as supabase_auth_admin: that role cannot reach the
+-- pgTAP functions (schema extensions), so its answers are checked after.
 set local role supabase_auth_admin;
-select is(public.sms_client_auth_hook('{"user":{"phone":"33639989801"},"sms":{"otp":"123456"}}'),
-  '{}'::jsonb, 'Auth peut déposer le code après autorisation');
-select ok(public.sms_client_auth_hook('{"user":{"phone":"33639989801"},"sms":{"otp":"654321"}}') ? 'error',
-  'Un permis ne sert qu’une fois');
-select ok(public.sms_client_auth_hook('{"user":{"phone":"33639989802"},"sms":{"otp":"123456"}}') ? 'error',
-  'Un appel Auth direct sans CAPTCHA est refusé');
+select set_config('test.hook_1', public.sms_client_auth_hook('{"user":{"phone":"33639989801"},"sms":{"otp":"123456"}}')::text, true);
+select set_config('test.hook_2', public.sms_client_auth_hook('{"user":{"phone":"33639989801"},"sms":{"otp":"654321"}}')::text, true);
+select set_config('test.hook_3', public.sms_client_auth_hook('{"user":{"phone":"33639989802"},"sms":{"otp":"123456"}}')::text, true);
 reset role;
+select is(current_setting('test.hook_1')::jsonb, '{}'::jsonb, 'Auth peut déposer le code après autorisation');
+select ok(current_setting('test.hook_2')::jsonb ? 'error', 'Un permis ne sert qu’une fois');
+select ok(current_setting('test.hook_3')::jsonb ? 'error', 'Un appel Auth direct sans CAPTCHA est refusé');
 select is((select code from public.envois_codes_clients where telephone = '33639989801'), '123456',
   'Le code reste accessible uniquement au serveur');
 select ok((select relrowsecurity from pg_class where oid = 'public.envois_codes_clients'::regclass), 'RLS activée sur les compteurs');
