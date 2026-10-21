@@ -17,6 +17,7 @@ const GerantEmployes = lazy(() => import("./pages/GerantEmployes"));
 const EmployeLayout = lazy(() => import("./components/EmployeLayout"));
 const EmployeAgenda = lazy(() => import("./pages/EmployeAgenda"));
 const DefinirMotDePasse = lazy(() => import("./pages/DefinirMotDePasse"));
+const ClientConnexion = lazy(() => import("./pages/ClientConnexion"));
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/reserver" element={<Reserver />} />
           <Route path="/confirmation/:id" element={<Confirmation />} />
+          <Route path="/client/connexion" element={<ClientConnexion />} />
           <Route path="/gerant/connexion" element={<GerantConnexion />} />
           <Route path="/gerant" element={<GerantLayout />}>
             <Route index element={<GerantPlanning />} />

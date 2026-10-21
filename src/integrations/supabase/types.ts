@@ -3,24 +3,33 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      envois_codes_clients: {
+        Row: { telephone: string; demandes: string[]; autorise_jusqua: string | null; code: string | null };
+        Insert: { telephone: string; demandes?: string[]; autorise_jusqua?: string | null; code?: string | null };
+        Update: { telephone?: string; demandes?: string[]; autorise_jusqua?: string | null; code?: string | null };
+        Relationships: [];
+      };
       clients: {
         Row: {
           cree_le: string | null;
           id: string;
           nom: string;
           telephone: string;
+          user_id: string | null;
         };
         Insert: {
           cree_le?: string | null;
           id?: string;
           nom: string;
           telephone: string;
+          user_id?: string | null;
         };
         Update: {
           cree_le?: string | null;
           id?: string;
           nom?: string;
           telephone?: string;
+          user_id?: string | null;
         };
         Relationships: [];
       };
@@ -281,6 +290,8 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      autoriser_code_client: { Args: { p_telephone: string }; Returns: boolean };
+      sms_client_auth_hook: { Args: { event: Json }; Returns: Json };
       creneaux_libres: {
         Args: { p_date: string };
         Returns: {

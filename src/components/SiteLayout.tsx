@@ -8,6 +8,7 @@ const SiteLayout = ({ children }: { children: ReactNode }) => (
         <Link to="/" className="text-lg font-bold text-primary">
           RésaPro
         </Link>
+        <Link to="/client/connexion" className="text-sm underline-offset-4 hover:underline">Espace client</Link>
       </div>
     </header>
     <main className="container max-w-2xl flex-1 py-6">{children}</main>

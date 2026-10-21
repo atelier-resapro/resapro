@@ -26,6 +26,32 @@ enable_signup = false
 enable_signup = false
 enable_confirmations = false
 
+[auth.sms]
+# Enable the phone provider; auth.enable_signup above still forbids public sign-ups.
+enable_signup = true
+enable_confirmations = true
+max_frequency = "60s"
+
+# Local only. Never configure these fixed codes on the production project.
+[auth.sms.test_otp]
+33639989901 = "123456"
+33639989902 = "654321"
+
+# CLI requires an enabled provider even with test_otp and a Send SMS hook.
+# Inert local placeholders: the SQL hook replaces this provider entirely.
+[auth.sms.twilio]
+enabled = true
+account_sid = "local-unused"
+message_service_sid = "local-unused"
+auth_token = "local-unused"
+
+[auth.hook.send_sms]
+enabled = true
+uri = "pg-functions://postgres/public/sms_client_auth_hook"
+
+[functions.demander-code-client]
+verify_jwt = false
+
 [functions.envoyer-sms]
 # The function checks the caller itself (see index.ts).
 verify_jwt = false
