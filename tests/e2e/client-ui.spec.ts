@@ -77,6 +77,7 @@ test('une session client validée affiche le succès et permet la déconnexion',
       app_metadata: { provider: 'phone' }, user_metadata: {}, created_at: new Date().toISOString() },
   } }));
   await page.route('**/rest/v1/profils?*', route => route.fulfill({ json: [{ role: 'client' }] }));
+  await page.route('**/rest/v1/rpc/mes_rendez_vous', route => route.fulfill({ json: [] }));
   await page.route('**/auth/v1/logout?*', route => route.fulfill({ status: 204 }));
   await page.goto('/client/connexion');
   await expect(page.locator('input[type=password]')).toHaveCount(0);
@@ -84,7 +85,7 @@ test('une session client validée affiche le succès et permet la déconnexion',
   await page.getByRole('button', { name: 'Recevoir un code par SMS' }).click();
   await page.getByLabel('Code reçu par SMS').fill('123456');
   await page.getByRole('button', { name: 'Se connecter', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Vous êtes connecté' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mes rendez-vous' })).toBeVisible();
   await page.getByRole('button', { name: 'Se déconnecter' }).click();
   await expect(page.getByRole('heading', { name: 'Connexion client' })).toBeVisible();
 });

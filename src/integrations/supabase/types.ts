@@ -3,6 +3,12 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      parametres_salon: {
+        Row: { id: boolean; delai_modification_heures: number };
+        Insert: { id?: boolean; delai_modification_heures?: number };
+        Update: { delai_modification_heures?: number };
+        Relationships: [];
+      };
       envois_codes_clients: {
         Row: { telephone: string; demandes: string[]; autorise_jusqua: string | null; code: string | null };
         Insert: { telephone: string; demandes?: string[]; autorise_jusqua?: string | null; code?: string | null };
@@ -290,6 +296,17 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      mon_client_id: { Args: Record<PropertyKey, never>; Returns: string };
+      mes_rendez_vous: {
+        Args: Record<PropertyKey, never>;
+        Returns: { id: string; debut: string; fin: string; statut: string; prestation: string; coiffeur: string; prix: number; modification_jusqua: string }[];
+      };
+      creneaux_deplacement_client: {
+        Args: { p_rendez_vous_id: string; p_date: string }; Returns: { debut: string }[];
+      };
+      modifier_mon_rendez_vous: {
+        Args: { p_rendez_vous_id: string; p_debut?: string }; Returns: undefined;
+      };
       autoriser_code_client: { Args: { p_telephone: string }; Returns: boolean };
       sms_client_auth_hook: { Args: { event: Json }; Returns: Json };
       creneaux_libres: {

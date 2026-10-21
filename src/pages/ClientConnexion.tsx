@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import SiteLayout from '@/components/SiteLayout';
 import ClientCaptcha from '@/components/ClientCaptcha';
@@ -64,6 +64,7 @@ export default function ClientConnexion() {
   }
 
   if (loading || (session && profil.isLoading)) return <SiteLayout><p>Chargement…</p></SiteLayout>;
+  if (session && profil.data === 'client') return <Navigate to="/client" replace />;
   if (session) return <SiteLayout>
     <h1 className="text-2xl font-bold">{profil.data === 'client' ? 'Vous êtes connecté' : 'Un compte est déjà connecté'}</h1>
     <p className="my-4">{profil.data === 'client' ? 'Votre connexion par téléphone a réussi.' : 'Votre session actuelle reste active.'}</p>

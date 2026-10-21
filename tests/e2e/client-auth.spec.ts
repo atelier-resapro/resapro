@@ -10,9 +10,9 @@ test('Supabase local : mauvais code refusé, code de test accepté sans SMS', as
   await expect(page.getByRole('alert')).toContainText('Code incorrect ou expiré');
   await page.getByLabel('Code reçu par SMS').fill('123456');
   await page.getByRole('button', { name: 'Se connecter', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Vous êtes connecté' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mes rendez-vous' })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Vous êtes connecté' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Mes rendez-vous' })).toBeVisible();
   await page.getByRole('button', { name: 'Se déconnecter' }).click();
   await expect(page.getByRole('heading', { name: 'Connexion client' })).toBeVisible();
 });

@@ -131,3 +131,31 @@ Un échec d’envoi consomme le quota, pour empêcher les réessais en boucle.
 Références : [connexion téléphone Supabase](https://supabase.com/docs/guides/auth/phone-login),
 [Send SMS hook](https://supabase.com/docs/guides/auth/auth-hooks/send-sms-hook),
 [clés de test Turnstile](https://developers.cloudflare.com/turnstile/troubleshooting/testing/).
+
+### Espace client et délai de modification
+
+Après connexion, `/client` présente les rendez-vous à venir puis les passés,
+avec les annulations conservées en dessous. Le gérant règle le délai minimum
+dans `/gerant/parametres` (24 heures initialement, en heures entières).
+Ce réglage s’applique immédiatement aux réservations existantes.
+Sous le délai, les actions disparaissent et le client est invité à appeler le salon.
+Les dates et heures des rendez-vous sont affichées dans le fuseau Europe/Paris.
+
+La migration `20261021160000_espace_client.sql` doit être appliquée avant de
+mettre cette interface en service. `mes_rendez_vous` ne retourne que les
+rendez-vous du client connecté ; la RLS protège aussi les lectures directes.
+Les écritures directes restent interdites au client.
+`modifier_mon_rendez_vous` verrouille le rendez-vous, vérifie son propriétaire,
+son statut et le délai, puis annule ou déplace. Un déplacement conserve la
+prestation, l’employé et la durée initiale ; les disponibilités excluent seulement
+le rendez-vous déplacé et respectent les horaires, fermetures et chevauchements.
+Les contraintes de la base protègent aussi contre les réservations simultanées.
+Le déplacement d’un ancien rendez-vous à créneau fixe le fait passer dans le
+système d’agenda par employé (`creneau_id` devient nul).
+
+`supabase/tests/espace_client_test.sql` vérifie l’isolation entre clients,
+les modifications autorisées et refusées, les fermetures et les paramètres.
+Exécuter `npm run test:db` avec la pile Supabase locale démarrée.
+`npm run test:e2e:ui` inclut les parcours client et gérant avec API simulée,
+ainsi qu’un contrôle mobile 375 × 667 montrant deux rendez-vous à venir sans
+défilement. Au-delà de la hauteur disponible, la liste reste défilable.

@@ -12,6 +12,7 @@ const liens = [
   { to: "/gerant/prestations", label: "Prestations", end: false },
   { to: "/gerant/journees", label: "Journées", end: false },
   { to: "/gerant/employes", label: "Employés", end: false },
+  { to: "/gerant/parametres", label: "Paramètres", end: false },
 ];
 
 /**
