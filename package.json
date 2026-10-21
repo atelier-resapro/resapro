@@ -11,7 +11,9 @@
     "test": "node --test tests/*.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --project=ui",
-    "test:db": "supabase test db"
+    "test:e2e:parcours": "playwright test -c playwright.parcours.config.ts",
+    "test:db": "node scripts/tests-base.mjs",
+    "test:db:sabotage": "node scripts/tests-base.mjs --sabotage"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.17",
