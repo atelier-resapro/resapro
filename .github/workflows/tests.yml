@@ -1,0 +1,96 @@
+# Every pull request: unit tests, database rules (and their counter-check with
+# each rule broken on purpose), browser tests and the real client journey.
+# The database is a throwaway local Supabase stack created on the GitHub
+# runner from the migrations and seed.sql: never the production project.
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TESTS_BASE: locale
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint, build et tests unitaires
+        run: |
+          npm run lint
+          npm run build
+          npm test
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+
+      - name: Base Supabase jetable (migrations + seed)
+        run: supabase start -x studio,imgproxy,mailpit,logflare,vector,supavisor,realtime,storage-api,postgres-meta
+
+      - name: Fonctions Edge (clés de test Turnstile, numéros de test, aucun SMS)
+        run: |
+          nohup supabase functions serve --env-file supabase/functions/.env.example > functions.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -X OPTIONS http://127.0.0.1:54321/functions/v1/demander-code-client > /dev/null && exit 0
+            sleep 2
+          done
+          cat functions.log
+          exit 1
+
+      - name: Clés de la base locale
+        run: |
+          supabase status -o env | sed -n 's/^ANON_KEY="\(.*\)"$/SUPABASE_TEST_ANON_KEY=\1/p' >> "$GITHUB_ENV"
+          echo "SUPABASE_CLI=$(command -v supabase)" >> "$GITHUB_ENV"
+
+      - name: Règles de la base (pgTAP)
+        run: |
+          # Throwaway base only: the hook tests act as the Auth server.
+          psql postgresql://supabase_admin:postgres@127.0.0.1:54322/postgres -X -q -v ON_ERROR_STOP=1 \
+            -c 'grant supabase_auth_admin to postgres'
+          npm run test:db
+
+      - name: Contre-épreuve (chaque règle cassée exprès)
+        run: npm run test:db:sabotage
+
+      - name: Tests navigateur (API simulée et connexion SMS locale)
+        run: npm run test:e2e
+
+      - name: Parcours client de bout en bout
+        env:
+          E2E_SUPABASE_URL: http://127.0.0.1:54321
+          # Own test number: Auth refuses a second code within 60 seconds,
+          # and the browser tests above just used 06 39 98 99 01.
+          E2E_TELEPHONE: '0639989903'
+          E2E_CODE: '135790'
+        run: E2E_SUPABASE_KEY="$SUPABASE_TEST_ANON_KEY" npm run test:e2e:parcours
+
+      - name: Journal des fonctions
+        if: failure()
+        run: cat functions.log || true
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

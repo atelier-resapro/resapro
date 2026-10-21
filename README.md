@@ -204,3 +204,38 @@ le plafond de dépenses du compte Brevo, et désactiver toute recharge
 automatique non plafonnée. Ce réglage du compte fournisseur ne peut pas être
 activé par le code de l’application ; sa configuration effective reste à
 vérifier dans le compte Brevo.
+
+## Tests automatiques
+
+Les tests n’utilisent jamais la base de production. Depuis ce poste, ils visent
+le projet Supabase **de test** lié (`supabase link`) ; sur GitHub, une base
+Supabase jetable est créée à chaque exécution à partir des migrations et de
+`seed.sql`.
+
+Préparation sur le poste : copier `.env.tests.example` vers `.env.tests.local`
+et le remplir (chemin d’une CLI Supabase 2.121 ou plus récente, URL et clé
+**publique** du projet de test, numéro de test Auth et son code fixe).
+
+```sh
+npm run test:db            # règles de la base (pgTAP), sans Docker
+npm run test:db:sabotage   # contre-épreuve : chaque règle cassée exprès
+npm run test:e2e:parcours  # parcours client réel dans Chrome
+```
+
+- `supabase/tests/regles_metier_test.sql` vérifie les règles métier :
+  chevauchement refusé, attribution avec « indifférent », délai de 24 heures
+  (et délai réglé par le gérant), accès du public, du client, de l’employé, du
+  gérant et d’un compte sans profil. Chaque test commence par le nom de sa règle.
+- `npm run test:db:sabotage` casse chaque règle à l’intérieur d’une transaction
+  annulée (contrainte supprimée, tri modifié, délai ignoré, accès élargi) et
+  vérifie que seuls les tests de cette règle échouent. Rien n’est enregistré.
+- `tests/e2e/parcours-client.spec.ts` crée sa prestation et ses deux coiffeurs,
+  réserve avec « indifférent », se connecte à l’espace client avec le numéro de
+  test, annule le rendez-vous, vérifie l’annulation en base puis supprime ses
+  données. L’envoi de SMS est simulé : aucun SMS payant ne part.
+- Sur le projet hébergé, les fichiers qui jouent le rôle `supabase_auth_admin`
+  (hook Auth) sont ignorés ; ils sont joués sur la base jetable de GitHub.
+
+Le workflow `.github/workflows/tests.yml` lance à chaque pull request : lint,
+build, tests unitaires, tests de la base, contre-épreuve, tests navigateur et
+parcours client.
