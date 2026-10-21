@@ -26,10 +26,6 @@ function json(body: unknown, status = 200) {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// A confirmation SMS is only sent for an appointment created in the last minutes:
-// the booking page is public, so this limits what a stranger could trigger.
-const CONFIRMATION_WINDOW_MS = 15 * 60 * 1000;
-
 /** 0612345678 -> 33612345678 (international format expected by Brevo) */
 function versInternational(telephone: string): string {
   return "33" + telephone.replace(/^0/, "");
@@ -145,30 +141,23 @@ Deno.serve(async (req) => {
     return json({ ok: true });
   }
 
-  // The appointment and the phone number are read here, on the server.
-  const { data: rdv, error: lectureError } = await admin
-    .from("rendez_vous")
-    .select("id, statut, cree_le, debut, clients(nom, telephone), prestations(nom)")
-    .eq("id", rendez_vous_id)
-    .maybeSingle();
-  if (lectureError) {
-    console.error("Appointment read failed");
+  // The database claims the confirmation once: a confirmed booking made in the
+  // last 15 minutes, never confirmed before. The phone is read on the server.
+  // Unknown, old, cancelled or already confirmed: same answer, no information leak.
+  const { data: confirmations, error: claimError } = await admin.rpc("reclamer_confirmation_sms", {
+    p_rendez_vous_id: rendez_vous_id,
+  });
+  if (claimError) {
+    console.error("Confirmation claim failed");
     return json({ error: "Lecture impossible" }, 500);
   }
-  if (!rdv) return json({ error: "Rendez-vous introuvable" }, 404);
-
-  // deno-lint-ignore no-explicit-any
-  const { clients, prestations } = rdv as any;
-
-  const age = Date.now() - new Date(rdv.cree_le).getTime();
-  if (rdv.statut !== "confirme" || !Number.isFinite(age) || age < 0 || age > CONFIRMATION_WINDOW_MS) {
-    return json({ error: "Envoi non autorisé" }, 403);
-  }
+  const rdv = (confirmations as { telephone: string; prestation: string; debut: string }[] | null)?.[0];
+  if (!rdv) return json({ error: "Envoi non autorisé" }, 403);
 
   // The start works for both systems (old slots and employees).
   const jour = formatJour(new Date(rdv.debut));
   const heure = formatHeure(new Date(rdv.debut));
-  const contenu = `RésaPro : votre rendez-vous ${prestations.nom} du ${jour} à ${heure} est confirmé.`;
+  const contenu = `RésaPro : votre rendez-vous ${rdv.prestation} du ${jour} à ${heure} est confirmé.`;
 
   const reponse = await fetch("https://api.brevo.com/v3/transactionalSMS/sms", {
     method: "POST",
@@ -179,7 +168,7 @@ Deno.serve(async (req) => {
     },
     body: JSON.stringify({
       sender: "RESAPRO",
-      recipient: versInternational(clients.telephone),
+      recipient: versInternational(rdv.telephone),
       content: contenu,
       type: "transactional",
     }),

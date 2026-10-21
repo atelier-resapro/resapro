@@ -229,6 +229,7 @@ export type Database = {
       rendez_vous: {
         Row: {
           client_id: string;
+          confirmation_sms_le: string | null;
           cree_le: string | null;
           creneau_id: string | null;
           debut: string;
@@ -240,6 +241,7 @@ export type Database = {
         };
         Insert: {
           client_id: string;
+          confirmation_sms_le?: string | null;
           cree_le?: string | null;
           creneau_id?: string | null;
           debut: string;
@@ -251,6 +253,7 @@ export type Database = {
         };
         Update: {
           client_id?: string;
+          confirmation_sms_le?: string | null;
           cree_le?: string | null;
           creneau_id?: string | null;
           debut?: string;

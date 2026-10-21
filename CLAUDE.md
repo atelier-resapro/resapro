@@ -62,7 +62,7 @@ Database tests are pgTAP files in `supabase/tests`, run with `npm run test:db` (
 
 ### SMS (`supabase/functions/envoyer-sms`)
 
-Called via `envoyerSms()` in `src/lib/sms.ts`, which never throws: an SMS failure must never block a booking or cancellation. `verify_jwt = false`, so the function checks callers itself: `confirmation` only for a `confirme` appointment created less than 15 minutes ago (the booking page is public); `annulation` requires a valid JWT whose account has the `gerant` profile and an `annule` appointment. It reads the phone number server-side with the service role key and sends through Brevo. Logs must not contain phone numbers or keys.
+Called via `envoyerSms()` in `src/lib/sms.ts`, which never throws: an SMS failure must never block a booking or cancellation. `verify_jwt = false`, so the function checks callers itself: `confirmation` only for a `confirme` appointment created less than 15 minutes ago, and only once per booking (the booking page is public; `reclamer_confirmation_sms`, service role only, sets `rendez_vous.confirmation_sms_le` atomically); `annulation` requires a valid JWT whose account has the `gerant` profile and an `annule` appointment. It reads the phone number server-side with the service role key and sends through Brevo. Logs must not contain phone numbers or keys.
 
 ### Frontend
 
